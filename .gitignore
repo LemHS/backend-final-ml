@@ -1,0 +1,25 @@
+# ========== BACKEND (Python) ==========
+venv/
+.env*
+__pycache__/
+*.pyc
+app/chatbot/embedding_model
+app/chatbot/halodoc_db
+app/chatbot/chatbot_test.ipynb
+app/chatbot/ground_truth.csv
+app/chatbot/data_rapi.csv
+app/chatbot/pred.csv
+app/chatbot/eval_ril.csv
+app/chatbot/eval_bodong.csv
+
+# ========== GLOBAL (umum) ==========
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+key.txt
