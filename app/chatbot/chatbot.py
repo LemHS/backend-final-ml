@@ -41,6 +41,7 @@ class State(TypedDict):
     fact_provided: Dict[str, str]
     resume: str
     error_log: str
+    user_validations: List[tuple]
 
 @error_handler
 def identify_facts(llm, query):
@@ -309,12 +310,16 @@ def _ask_validation_(state: State, config: dict):
     })
     response = config["configurable"]["llm"].invoke(messages)
 
+    user_validations = state.get("user_validations", [])
+
     if answer == "tidak":
-        return {"resume": "validate"}
+        user_validations.append((state["question"], "tidak_sesuai"))
+        return {"resume": "validate", "user_validations": user_validations}
     elif (response.content.lower() == 'yes') or (response.content.lower() == 'ya'):
         return {"resume": "identify_facts", "question": answer}
     else:
-        return {"resume": "thank_you"}
+        user_validations.append((state["question"], "sesuai"))
+        return {"resume": "thank_you", "user_validations": user_validations}
     
 def _resume_(state: State, config: dict):
     return state["resume"]

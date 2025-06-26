@@ -26,33 +26,39 @@ async def ask_chatbot(
     req: ChatRequest,
     user_id: str = Depends(get_current_user)
 ):
-    print(req.threadid)
-    if req.threadid:
-        config = {
-            "configurable": {
-                "thread_id":req.threadid,
-                "query_llm": query_llm,
-                "llm": llm,
-                "df": df,
-                "lexical_retrievers": lexical_retrievers,
-                "semantic_retriever": semantic_retriever
+    try:
+        if req.threadid:
+            config = {
+                "configurable": {
+                    "thread_id":req.threadid,
+                    "query_llm": query_llm,
+                    "llm": llm,
+                    "df": df,
+                    "lexical_retrievers": lexical_retrievers,
+                    "semantic_retriever": semantic_retriever
+                }
             }
-        }
 
-        result = resume_qa(question=req.query, graph=graph, config=config)
-    else:
-        config = {
-            "configurable": {
-                "thread_id":uuid4(),
-                "query_llm": query_llm,
-                "llm": llm,
-                "df": df,
-                "lexical_retrievers": lexical_retrievers,
-                "semantic_retriever": semantic_retriever
+            result = resume_qa(question=req.query, graph=graph, config=config)
+        else:
+            config = {
+                "configurable": {
+                    "thread_id":uuid4(),
+                    "query_llm": query_llm,
+                    "llm": llm,
+                    "df": df,
+                    "lexical_retrievers": lexical_retrievers,
+                    "semantic_retriever": semantic_retriever
+                }
             }
-        }
 
-        result = start_qa(question=req.query, graph=graph, config=config)
+            result = start_qa(question=req.query, graph=graph, config=config)
+    except Exception:
+        error_log = pd.DataFrame({"state": [req.query], "error": ["backend"]})
+        error_log.to_csv("./app/chatbot/error_log.csv", mode="a", index=False, header=not os.path.exists("./app/chatbot/error_log.csv"))
+        return {
+            "answer": "Maaf kami tidak menemukan obat yang anda maksud"
+        }
 
     now = datetime.utcnow()
     session_id = f"session-{user_id}"
@@ -90,12 +96,13 @@ async def ask_chatbot(
         {**bot_msg.dict(), "id": str(bot_msg.id)}
     ])
 
-    print(config["configurable"]["thread_id"])
-    print(result)
-
     if "error_log" in result.keys():
+        if "user_validations" in result.keys():
+            user_validations = pd.DataFrame({"question": [user_validation[0] for user_validation in result["user_validations"]], "validation": [user_validation[1] for user_validation in result["user_validations"]]})
+            user_validations.to_csv("./app/chatbot/user_validations.csv", mode="a", index=False, header=not os.path.exists("./app/chatbot/user_validations.csv"))
+            
         state = {k: v for k, v in result.items() if (k != "error_log") and (k != "context")}
-        error_log = pd.DataFrame({"state": [result], "error": [result["error_log"]]})
+        error_log = pd.DataFrame({"state": [state], "error": [result["error_log"]]})
         error_log.to_csv("./app/chatbot/error_log.csv", mode="a", index=False, header=not os.path.exists("./app/chatbot/error_log.csv"))
         return {
             "answer": result["answer"]
@@ -118,6 +125,9 @@ async def ask_chatbot(
                 "thread_id": config["configurable"]["thread_id"]
             }
     else:
+        if "user_validations" in result.keys():
+            user_validations = pd.DataFrame({"question": [user_validation[0] for user_validation in result["user_validations"]], "validation": [user_validation[1] for user_validation in result["user_validations"]]})
+            user_validations.to_csv("./app/chatbot/user_validations.csv", mode="a", index=False, header=not os.path.exists("./app/chatbot/user_validations.csv"))
         return {
             "answer": result["answer"]
         }
